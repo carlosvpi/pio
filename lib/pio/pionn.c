@@ -1,5 +1,5 @@
 #define SENTENCE_LENGTH 140
-#define MEMORY_LENGTH 100
+#define MEMORY_LENGTH 300
 
 struct _pio {
 	NN nn;
@@ -55,33 +55,28 @@ PIO backpropagatePio (PIO pio, char* sentence, float alpha) {
 	int minOutputIndex = 0;
 	int maxOutputIndex = ASCII_DATA_LENGTH;
 	int sentenceLength = getSentenceLength(sentence);
-	float* charData;
-	// int minInputIndex = 0;
-	// int maxInputIndex = ASCII_DATA_LENGTH;
+	float* charData = (float*) malloc(ASCII_DATA_LENGTH * sizeof(float));
 
-	for (int charIndex = sentenceLength - 1; charIndex >= 0; charIndex--) {
-		charData = ascii2data(sentence[charIndex], NULL);
+	for (int charIndex = 1; charIndex < sentenceLength; charIndex++) {
+		// Compute the error array into deltas1
+		ascii2data(sentence[charIndex], charData);
 		for (int i = 0; i < ASCII_DATA_LENGTH; i++) {
-			deltas1[i] = pio->data[charIndex][lastLayer + 1][i] - charData[i];
+			deltas1[i] = pio->data[charIndex - 1][lastLayer + 1][i] - charData[i];
 		}
+
+		// Compute backpropagation for the current charIndex and the char-part of the output
 		for (int layer = nn->length - 1; layer >= 0; layer--) {
+			// swap pointers to deltas (we alternate between these two, avoiding having to reserve more memory inside the loop)
 			currentDeltas = (nn->length - layer) % 2 == 1 ? deltas1 : deltas2;
 			futureDeltas = (nn->length - layer) % 2 == 1 ? deltas2 : deltas1;
 			memset(futureDeltas, 0, byteWidth);
-			if (layer == nn->length - 1) {
-				minOutputIndex = charIndex == sentenceLength - 1 ? 0 : ASCII_DATA_LENGTH;
-				maxOutputIndex = charIndex == sentenceLength - 1 ? ASCII_DATA_LENGTH : nn->layers[layer]->output->length;
-			} else {
-				minOutputIndex = 0;
-				maxOutputIndex = nn->layers[layer]->output->length;
-			}
-			// if (layer == 0) {
-			// 	minInputIndex = 
-			// } else {
-			// 	minInputIndex = 0;
-			// 	maxInputIndex = nn->layers[layer]->input->length;
-			// }
-			for (int j = minOutputIndex; j < maxOutputIndex; j++) {
+
+			// determine the range of the output for which we will modify the weights,
+			// for the last layer, we select the Char-part of the output
+			// for other layers we select the whole (current-layer) output
+			maxOutputIndex = layer == nn->length - 1 ? ASCII_DATA_LENGTH: nn->layers[layer]->output->length;
+
+			for (int j = 0; j < maxOutputIndex; j++) {
 				out = pio->data[charIndex][layer + 1][j]; // layer + 1 because data stores the inputs, not the outputs
 				error = currentDeltas[j] * out * (1 - out); // D(Ei/outi) * D(outi/neti)
 				for (int i = 0; i < nn->layers[layer]->input->length; i++) {
@@ -89,6 +84,33 @@ PIO backpropagatePio (PIO pio, char* sentence, float alpha) {
 					futureDeltas[i] += error * nn->layers[layer]->weights[i][j]; // D(Ei/neti) * D(neti/ini)
 				}
 				nn->layers[layer]->bases[j] -= alpha * error * nn->layers[layer]->bases[j]; // D(Ei/neti) * D(neti/bi)
+			}
+		}
+		for (int backIndex = charIndex - 1; backIndex >= 0; backIndex--) {
+		// if (charIndex > 1) {
+			// compute backpropagation for the previous charIndex's and the memory-part of the output
+			// the memory-part of the futureDeltas contains the deltas for the memory-part of the output
+			deltas1 = futureDeltas;
+			deltas2 = currentDeltas;
+			for (int layer = nn->length - 1; layer >= 0; layer--) {
+				// swap pointers to deltas (we alternate between these two, avoiding having to reserve more memory inside the loop)
+				currentDeltas = (nn->length - layer) % 2 == 1 ? deltas1 : deltas2;
+				futureDeltas = (nn->length - layer) % 2 == 1 ? deltas2 : deltas1;
+				memset(futureDeltas, 0, byteWidth);
+
+				// determine the range of the output for which we will modify the weights,
+				// for the last layer we select the memory-part of the output
+				// for other layers we select the whole (current-layer) output
+				minOutputIndex = layer == nn->length - 1 ? ASCII_DATA_LENGTH : 0;
+				for (int j = minOutputIndex; j < nn->layers[layer]->output->length; j++) {
+					out = pio->data[backIndex][layer + 1][j]; // layer + 1 because data stores the inputs, not the outputs
+					error = currentDeltas[j] * out * (1 - out); // D(Ei/outi) * D(outi/neti)
+					for (int i = 0; i < nn->layers[layer]->input->length; i++) {
+						nn->layers[layer]->weights[i][j] -= alpha * error * pio->data[backIndex][layer][i]; // D(Ei/neti) * D(neti/wij)
+						futureDeltas[i] += error * nn->layers[layer]->weights[i][j]; // D(Ei/neti) * D(neti/ini)
+					}
+					nn->layers[layer]->bases[j] -= alpha * error * nn->layers[layer]->bases[j]; // D(Ei/neti) * D(neti/bi)
+				}
 			}
 		}
 	}
@@ -150,11 +172,12 @@ float calculatePioError (PIO pio, char* sentence) {
 	return error / i;
 }
 
-PIO trainPio (PIO pio, float alpha, char** sentences, int testBedSize, TRAIN_OPTIONS trainOptions, CONSOLE console) {
+PIO trainPio (PIO pio, char** sentences, int testBedSize, TRAIN_OPTIONS trainOptions, CONSOLE console) {
 	int maxTime = trainOptions == NULL ? 10 : trainOptions->maxTime;
 	float maxError = trainOptions == NULL ? 1.4 : trainOptions->maxError;
-	int startTime = time(NULL) / 1000;
-	int elapsed = time(NULL) / 1000 - startTime;
+	float alpha = trainOptions == NULL ? 0.1 : trainOptions->alpha;
+	int startTime = time(NULL);
+	int elapsed = time(NULL) - startTime;
 	float error;
 	NN nn = pio->nn;
 	do {
@@ -163,7 +186,7 @@ PIO trainPio (PIO pio, float alpha, char** sentences, int testBedSize, TRAIN_OPT
 			generateAndCompare(pio, sentences[i]);
 			error += calculatePioError(pio, sentences[i]);
 			backpropagatePio(pio, sentences[i], alpha);
-			elapsed = time(NULL) / 1000 - startTime;
+			elapsed = time(NULL) - startTime;
 			logElapsed(console, elapsed);
 		}
 		error = error / testBedSize;

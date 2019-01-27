@@ -42,9 +42,10 @@ int main(void) {
 	copySentence("Computing forever", sentences, 2);
 	copySentence("Literally is not figuratively", sentences, 3);
 
+	TRAIN_OPTIONS trainOptions = newTrainOptions(1200, 0.5, 0.1);
 	CONSOLE console = newConsole();
 	startConsole();
-	trainPio(pio, 0.15, sentences, 1, NULL, console);
+	trainPio(pio, sentences, 1, trainOptions, console);
 	endConsole();
 
 	printf("%s\n", generate(pio));

@@ -5,6 +5,7 @@ struct _array {
 	int length;
 };
 
+// newArray returns a data structure containing an array of floats and their length
 ARRAY newArray (int length) {
 	ARRAY array = (ARRAY) malloc(sizeof(struct _array));
 	array->data = (float*) calloc(length, sizeof(float));
@@ -12,23 +13,28 @@ ARRAY newArray (int length) {
 	return array;
 }
 
+// cleanArray sets the array's floats to 0
 void cleanArray (ARRAY array) {
 	memset(array->data, 0, array->length * sizeof(float));
 }
 
+// copyData copies the data of an array to a pointer
 void copyData (float* dst, ARRAY array) {
 	memcpy(dst, array->data, array->length * sizeof(float));
 }
 
+// freeArray frees the memory of an array
 void freeArray (ARRAY array) {
 	free(array->data);
 	free(array);
 }
 
+// assignData assigns some data to the array's float pointer
 void assignData (ARRAY array, float* data) {
 	array->data = data;
 }
 
+// A layer represents the weights and bases between an input and an output arrays
 struct _layer {
 	float** weights;
 	float* bases;
@@ -178,12 +184,14 @@ float calculateError(float* output, float* expected, int length) {
 struct _train_options {
 	int maxTime;
 	float maxError;
+	float alpha;
 };
 
-TRAIN_OPTIONS newTrainOptions (int maxTime, float maxError) {
+TRAIN_OPTIONS newTrainOptions (int maxTime, float maxError, float alpha) {
 	TRAIN_OPTIONS trainOptions = (TRAIN_OPTIONS) malloc(sizeof(struct _train_options));
 	trainOptions->maxTime = maxTime;
 	trainOptions->maxError = maxError;
+	trainOptions->alpha = alpha;
 	return trainOptions;
 }
 
@@ -225,7 +233,7 @@ void logIncrementLoops (CONSOLE console) {
 }
 
 void startConsole () {
-	printf("Elapsed\tError\tLoops\n");
+	printf("Elapsed\tLoops\tError\n");
 }
 
 void endConsole () {
@@ -233,14 +241,15 @@ void endConsole () {
 }
 
 void displayConsole (CONSOLE console) {
-	printf("\r%ds\t%.5f\t%d", console->elapsed, console->error, console->loops);
+	printf("\r%ds\t%d\t%f", console->elapsed, console->loops, console->error);
 }
 
-NN train(NN nn, float alpha, float** inputs, float** outputs, int testBedSize, TRAIN_OPTIONS trainOptions, CONSOLE console) {
+NN train(NN nn, float** inputs, float** outputs, int testBedSize, TRAIN_OPTIONS trainOptions, CONSOLE console) {
 	int maxTime = trainOptions == NULL ? 10 : trainOptions->maxTime;
 	float maxError = trainOptions == NULL ? 0.1 : trainOptions->maxError;
-	int startTime = time(NULL) / 1000;
-	int elapsed = time(NULL) / 1000 - startTime;
+	float alpha = trainOptions == NULL ? 0.1 : trainOptions->alpha;
+	int startTime = time(NULL);
+	int elapsed = time(NULL) - startTime;
 	float error;
 	do {
 		error = 0;
@@ -248,7 +257,7 @@ NN train(NN nn, float alpha, float** inputs, float** outputs, int testBedSize, T
 			execNN(nn, inputs[i]);
 			error += calculateError(nn->layers[nn->length - 1]->output->data, outputs[i], nn->layers[nn->length - 1]->output->length);
 			backpropagate(nn, outputs[i], alpha);
-			elapsed = time(NULL) / 1000 - startTime;
+			elapsed = time(NULL) - startTime;
 			logElapsed(console, elapsed);
 		}
 		error = error / testBedSize;
