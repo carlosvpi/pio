@@ -1,5 +1,6 @@
 #define SENTENCE_LENGTH 140
-#define MEMORY_LENGTH 300
+#define MEMORY_LENGTH 500
+#define INFINITE 9
 
 struct _pio {
 	NN nn;
@@ -86,8 +87,9 @@ PIO backpropagatePio (PIO pio, char* sentence, float alpha) {
 				nn->layers[layer]->bases[j] -= alpha * error * nn->layers[layer]->bases[j]; // D(Ei/neti) * D(neti/bi)
 			}
 		}
-		for (int backIndex = charIndex - 1; backIndex >= 0; backIndex--) {
-		// if (charIndex > 1) {
+		// this 'for' might be replaceable by just an if, instead of checking all the previous indexes, check only index-1 ?
+		// for (int backIndex = charIndex - 1; backIndex >= 0; backIndex--) {
+		if (charIndex > 1) {
 			// compute backpropagation for the previous charIndex's and the memory-part of the output
 			// the memory-part of the futureDeltas contains the deltas for the memory-part of the output
 			deltas1 = futureDeltas;
@@ -103,10 +105,10 @@ PIO backpropagatePio (PIO pio, char* sentence, float alpha) {
 				// for other layers we select the whole (current-layer) output
 				minOutputIndex = layer == nn->length - 1 ? ASCII_DATA_LENGTH : 0;
 				for (int j = minOutputIndex; j < nn->layers[layer]->output->length; j++) {
-					out = pio->data[backIndex][layer + 1][j]; // layer + 1 because data stores the inputs, not the outputs
+					out = pio->data[charIndex - 1][layer + 1][j]; // layer + 1 because data stores the inputs, not the outputs
 					error = currentDeltas[j] * out * (1 - out); // D(Ei/outi) * D(outi/neti)
 					for (int i = 0; i < nn->layers[layer]->input->length; i++) {
-						nn->layers[layer]->weights[i][j] -= alpha * error * pio->data[backIndex][layer][i]; // D(Ei/neti) * D(neti/wij)
+						nn->layers[layer]->weights[i][j] -= alpha * error * pio->data[charIndex - 1][layer][i]; // D(Ei/neti) * D(neti/wij)
 						futureDeltas[i] += error * nn->layers[layer]->weights[i][j]; // D(Ei/neti) * D(neti/ini)
 					}
 					nn->layers[layer]->bases[j] -= alpha * error * nn->layers[layer]->bases[j]; // D(Ei/neti) * D(neti/bi)

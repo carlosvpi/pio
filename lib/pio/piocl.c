@@ -109,18 +109,18 @@ void setKernelPointerArg(cl_kernel kernel, cl_uint arg_index, void* arg_value, s
     }
 }
 
-cl_kernel createTransitionKernel(cl_program program, float a, float b, void* c) {
-    cl_kernel kernel = createKernel(program, "transition");
-    setKernelValueArg(kernel, 0, a);
-    setKernelValueArg(kernel, 1, b);
+cl_kernel createMultiplyKernel(cl_program program, float* a, float* b, void* c) {
+    cl_kernel kernel = createKernel(program, "multiply");
+    setKernelPointerArg(kernel, 0, a, sizeof(cl_mem));
+    setKernelPointerArg(kernel, 1, b, sizeof(cl_mem));
     setKernelPointerArg(kernel, 2, c, sizeof(cl_mem));
     return kernel;
 }
 
-cl_event enqueueNDRangeTransitionKernel(cl_context context, cl_command_queue command_queue, cl_kernel kernel) {
+cl_event enqueueNDRangeMultipluKernel(cl_context context, cl_command_queue command_queue, cl_kernel kernel, int size) {
     cl_int eventCreationError;
     cl_event event = clCreateUserEvent(context, &eventCreationError);
-    size_t global_work_size[2] = {19, 19};
+    size_t global_work_size[1] = {size};
     cl_int r = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, global_work_size, NULL, 0, NULL, &event);
     if (r != CL_SUCCESS) {
         printf(KRED "Error equeueing kernel range: %d\n", r);
@@ -181,12 +181,12 @@ int piocl (void) {
 
     cl_context context = createContext(device);
     cl_command_queue command_queue = createCommandQueue(context, device);
-    cl_program program = createProgram(context, "transition-kernel.c");
+    cl_program program = createProgram(context, "pio-kernel.c");
     buildProgram(program, device);
     float* image_ptr = calloc(361, sizeof(float));
     cl_mem image = create2DImage(context, 19, CL_MEM_USE_HOST_PTR | CL_MEM_WRITE_ONLY, (void*) image_ptr);
-    cl_kernel kernel = createTransitionKernel(program, 0.5, 0.5, &image);
-    cl_event event = enqueueNDRangeTransitionKernel(context, command_queue, kernel);
+    cl_kernel kernel = createMultiplyKernel(program, 0.5, 0.5, &image);
+    cl_event event = enqueueNDRangeMultipluKernel(context, command_queue, kernel);
     waitForEvents(1, &event);
     cl_int executionStatus = getEventExecutionStatus(event);
     switch (executionStatus) {
