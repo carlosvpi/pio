@@ -37,8 +37,8 @@ int main(void) {
 	}
 
 	char** sentences = (char**) malloc(4 * sizeof(char*));
-	copySentence("Le", sentences, 0);
-	// copySentence("Learning to tweet", sentences, 0);
+	// copySentence("Le", sentences, 0);
+	copySentence("Learning to tweet", sentences, 0);
 	// copySentence("You are awesome", sentences, 1);
 	// copySentence("Computing forever", sentences, 2);
 	// copySentence("Literally is not figuratively", sentences, 3);
