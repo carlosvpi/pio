@@ -28,58 +28,28 @@ int main(void) {
 
 	float* output;
 
-	//PIO pio = newPio(loadNN("nns/pio"));
-	PIO pio = NULL;
+	// NN pio = loadNN("nns/pio");
+	NN pio = NULL;
 
 	if (pio == NULL) {
-		pio = newPio(NULL);
-		saveNN(pio->nn, "nns/pio");
+		pio = newPio();
+		saveNN(pio, "nns/pio");
 	}
 
 	char** sentences = (char**) malloc(4 * sizeof(char*));
-	copySentence("Learning to tweet", sentences, 0);
-	copySentence("You are awesome", sentences, 1);
-	copySentence("Computing forever", sentences, 2);
-	copySentence("Literally is not figuratively", sentences, 3);
+	copySentence("Le", sentences, 0);
+	// copySentence("Learning to tweet", sentences, 0);
+	// copySentence("You are awesome", sentences, 1);
+	// copySentence("Computing forever", sentences, 2);
+	// copySentence("Literally is not figuratively", sentences, 3);
 
-	TRAIN_OPTIONS trainOptions = newTrainOptions(2400, 0.5, 0.005);
+	TRAIN_OPTIONS trainOptions = newTrainOptions(3600, 0.1, 0.5);
 	CONSOLE console = newConsole();
 	startConsole();
 	trainPio(pio, sentences, 1, trainOptions, console);
 	endConsole();
 
-	printf("%s\n", generate(pio));
+	printf("%s\n", generate(pio, 'L'));
 
 	printf("\nEND\n");
-
-	// for (int i = 0; i < 1; i++) {
-	// 	match = newMatch();
-	// 	alpha = 20 / sqrt(i + 10);
-	// 	blackWon = trainPlayingMatch(match, nn, alpha);
-	// 	// printf("\n\n\n\n\n\n---------------------------------------\n");
-	// 	printf("match: %d, alpha: %.3f, ", i, alpha);
-	// 	if (blackWon == TRUE) {
-	// 		printf(KBLU "Black" KWHT " won, ");
-	// 	} else {
-	// 		printf(KYEL "White" KWHT " won, ");
-	// 	}
-	// 	saveMatch(match, "sgf/m1.sgf");
-	// 	saveNN(nn, "nns/mk");
-	// }
-	// // printf("\n");
-	// // saveMatch(match, "sgf/m1.sgf");
-
-	// // BOOL run(&next, current, previous, workboard1, workboard2, nn, stone) {
-
-
-
-	// // freeNN(nn);
-
-	// // gocl();
-
-	// // printf("List: %d\n", list);
-	// // printf("Items: %d\n", list->items);
-	// // printf("Items[0]: %d\n", list->items[0]);
-	// // printf("Items[0][0]: %d\n", ((char*) list->items[0])[0]);
-	// // printf("Items[0][1]: %d\n", ((char*) list->items[0])[1]);
 }

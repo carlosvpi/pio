@@ -15,7 +15,9 @@ ARRAY newArray (int length) {
 
 // cleanArray sets the array's floats to 0
 void cleanArray (ARRAY array) {
-	memset(array->data, 0, array->length * sizeof(float));
+	for (int i = 0; i < array->length; i++) {
+		array->data[i] = 0;
+	}
 }
 
 // copyData copies the data of an array to a pointer
@@ -159,7 +161,9 @@ NN backpropagate (NN nn, float* expected, float alpha) {
 	for (int layer = nn->length - 1; layer >= 0; layer--) {
 		currentDeltas = (nn->length - layer) % 2 == 1 ? deltas1 : deltas2;
 		futureDeltas = (nn->length - layer) % 2 == 1 ? deltas2 : deltas1;
-		memset(futureDeltas, 0, byteWidth);
+		for (int i = 0; i < width; i++) {
+			futureDeltas[i] = 0;
+		}
 		for (int j = 0; j < nn->layers[layer]->output->length; j++) {
 			out = nn->layers[layer]->output->data[j];
 			error = currentDeltas[j] * out * (1 - out); // D(Ei/outi) * D(outi/neti)
