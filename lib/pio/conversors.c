@@ -18,7 +18,9 @@ float* ascii2data (char code, float* data) {
 	}
 	code -= 32;
 	float* src = data != NULL ? data : (float*) malloc(ASCII_DATA_LENGTH * sizeof(float));
-	memset(src, 0, ASCII_DATA_LENGTH * sizeof(float));
+	for (int i = 0; i < ASCII_DATA_LENGTH; i++) {
+		src[i] = 0;
+	}
 	src[code] = 1;
 	return src;
 }
