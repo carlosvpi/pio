@@ -39,11 +39,12 @@ int main(void) {
 	char** sentences = (char**) malloc(4 * sizeof(char*));
 	// copySentence("Le", sentences, 0);
 	copySentence("Learning to tweet", sentences, 0);
+	// copySentence("Learning to tweet", sentences, 0);
 	// copySentence("You are awesome", sentences, 1);
 	// copySentence("Computing forever", sentences, 2);
 	// copySentence("Literally is not figuratively", sentences, 3);
 
-	TRAIN_OPTIONS trainOptions = newTrainOptions(3600, 0.1, 0.5);
+	TRAIN_OPTIONS trainOptions = newTrainOptions(900, 0.01, 0.015);
 	CONSOLE console = newConsole();
 	startConsole();
 	trainPio(pio, sentences, 1, trainOptions, console);

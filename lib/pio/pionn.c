@@ -1,5 +1,5 @@
 #define SENTENCE_LENGTH 140
-#define MEMORY_LENGTH 50
+#define MEMORY_LENGTH 10
 
 NN newPio () {
 	int length = 3;
@@ -72,50 +72,21 @@ NN backpropagatePio (NN nn, float** data, float alpha, float* finalDeltas, char 
 		// for other layers we select the whole (current-layer) output
 		minOutputIndex = (layer == nn->length - 1 && backPropagateMemory == 1) ? ASCII_DATA_LENGTH : 0;
 		maxOutputIndex = (layer == nn->length - 1 && backPropagateMemory == 0) ? ASCII_DATA_LENGTH : nn->layers[layer]->output->length;
-		// printf("\n%d to %d\n",minOutputIndex, maxOutputIndex);
+
 		for (int j = minOutputIndex; j < maxOutputIndex; j++) {
 			out = data[layer + 1][j]; // layer + 1 because data stores the inputs, not the outputs
-			error = currentDeltas[j] * out; // * (1 - out); // D(Ei/outi) * D(outi/neti)
-			// if (j == 7 || j == 6 || j == 37) {
-			// 	printf("i: %d, out: %f, currDelt: %f, error: %f\n", j, out, currentDeltas[j], error);
-			// }
-			// if (backPropagateMemory) {
-			// 	printf("%f ", currentDeltas[j]);
-			// }
-			// printf("j: %d, error: %f\n---------------------------\n", j, error);
+			error = currentDeltas[j] * out * (1 - out); // D(Ei/outi) * D(outi/neti)
+
 			for (int i = 0; i < nn->layers[layer]->input->length; i++) {
 				futureDeltas[i] += error * nn->layers[layer]->weights[i][j]; // D(Ei/neti) * D(neti/ini)
-				// if (layer == nn->length - 1) {
-				// 	printf("i: %d, %f -> ", i, nn->layers[layer]->weights[i][j]);
-				// }
 				nn->layers[layer]->weights[i][j] -= alpha * error * data[layer][i]; // D(Ei/neti) * D(neti/wij)
-				// if (layer == nn->length - 1) {
-				// 	printf("%f, (%f)\n", nn->layers[layer]->weights[i][j], alpha * error * data[layer][i]);
-				// }
 			}
-			// if (layer == nn->length - 1) {
-			// 	printf("\n");
-			// }
 			nn->layers[layer]->bases[j] -= alpha * error; // D(Ei/neti) * D(neti/bi)
 		}
-		// exit(0);
-		// if (backPropagateMemory) {
-		// 	printf("\n");
-		// }
 	}
 
 	if (deltas != NULL) {
 		memcpy(deltas, futureDeltas, nn->layers[0]->input->length * sizeof(float));
-		// printf("%d\n----\n", nn->layers[0]->input->length);
-		// for (int i = 0; i < ASCII_DATA_LENGTH + MEMORY_LENGTH; i++) {
-		// 	printf("%d, %f = %f\n", i, deltas[i], futureDeltas[i]);
-		// }
-		// exit(0);
-
-		// for (int i = 0; i < ASCII_DATA_LENGTH + MEMORY_LENGTH; i++) {
-		// 	printf("%f ", futureDeltas[i]);
-		// }
-		// printf("\n");
 	}
 	free(currentDeltas);
 	free(futureDeltas);
@@ -193,15 +164,12 @@ NN trainPio (NN nn, char** sentences, int sentencesLength, TRAIN_OPTIONS trainOp
 			memcpy(nn->layers[0]->input->data + ASCII_DATA_LENGTH, nn->layers[nn->length - 1]->output->data + ASCII_DATA_LENGTH, MEMORY_LENGTH * sizeof(float));
 		}
 
-		// Shuffle testbed
-		float** auxCharPP;
-		int auxInt;
-		int randIndex;
+		// // Shuffle testbed
+		// Still some problem here
+		// int auxInt;
+		// int randIndex;
 		// for (int c = 0; c < totalChars - 1; c++) {
 		// 	randIndex = (int) floor(((float) rand()) / ((float) RAND_MAX) * (totalChars - c) + c);
-		// 	// auxCharPP = data[randIndex];
-		// 	// data[randIndex] = data[c];
-		// 	// data[c] = auxCharPP;
 		// 	auxInt = shuffledIndexes[randIndex];
 		// 	shuffledIndexes[randIndex] = shuffledIndexes[c];
 		// 	shuffledIndexes[c] = auxInt;
@@ -217,64 +185,32 @@ NN trainPio (NN nn, char** sentences, int sentencesLength, TRAIN_OPTIONS trainOp
 
 			// Compute the error array into deltas1
 			error += calculateError(data[shuffledIndex][nn->length], charData, ASCII_DATA_LENGTH);
-			// int i = 7; // 37
-			// if (elapsed > 10) {
-				// for (int i = 0; i < ASCII_DATA_LENGTH; i++) {
-					// printf("%d, %f\n", i, data[shuffledIndex][nn->length][i]);
-				// }
-				// printf("\n");
-				// exit(0);
-			// }
-			// printf("37, %f\n", data[shuffledIndex][nn->length][37]);
-			// error += data2ascii(data[shuffledIndex][nn->length]) != chars[shuffledNextIndex]
-			// 	? 0.5
-			// 	: 0;
+
 			for (int i = 0; i < ASCII_DATA_LENGTH; i++) {
 				deltasPrime[i] = data[shuffledIndex][nn->length][i] - charData[i];
 			}
-			// int i = 7; // 37
-			// for (int i = 0; i < ASCII_DATA_LENGTH; i++) {
-			// 	printf("%d, %f\t\t%f\n", i, data[shuffledIndex][nn->length][i], deltasPrime[i]);
-			// }
-			// exit(0);
-			// printf("\n");
-			/* deltasPrime[37] -> -0
-			 * deltasPrime[51,52] -> +1
-			 * deltasPrime[x] -> +0
-			 * ?
-			 */
-			backpropagatePio(nn, data[shuffledIndex], alpha, deltasPrime, 0, deltas[c]);
-			// int i = 51; // 37
-			// for (int i = 0; i < ASCII_DATA_LENGTH; i++) {
-				// printf("%d, %f\n", i, deltas[c][i]);
-			// }
-			// exit(0);
 
-			// printf("%d\n-----\n", c);
-			// for (int i = 0; i < nn->layers[0]->input->length; i++) {
-			// 	printf("%f ", deltas[c][i]);
-			// }
-			// printf("\n");
+			backpropagatePio(nn, data[shuffledIndex], alpha, deltasPrime, 0, deltas[c]);
+
 			// Store deltas[c] where it should
 			elapsed = time(NULL) - startTime;
 			logElapsed(console, elapsed);
 		}
 
-		// // backpropagation through the entire testbed, only memory-part
-		// for (int c = 1, s = 0, sc = 1; c < totalChars && elapsed < maxTime; c++) {
-		// 	// error += calculatePioError(pio, sentences[s]);
+		// backpropagation through the entire testbed, only memory-part
+		for (int c = 1, s = 0, sc = 1; c < totalChars && elapsed < maxTime; c++) {
+			// error += calculatePioError(pio, sentences[s]);
 
-		// 	if (sc == sentenceLengths[s]) {
-		// 		sc = 0;
-		// 		s++;
-		// 	} else {
-		// 		backpropagatePio(nn, data[shuffledIndexes[c - 1]], alpha, deltas[c], 1, NULL);
-		// 		// Store deltas[c] where it should
-		// 		elapsed = time(NULL) - startTime;
-		// 		logElapsed(console, elapsed);
-		// 	}
-		// 	sc++;
-		// }
+			if (sc == sentenceLengths[s]) {
+				sc = 0;
+				s++;
+			} else {
+				backpropagatePio(nn, data[shuffledIndexes[c - 1]], alpha, deltas[c], 1, NULL);				
+				elapsed = time(NULL) - startTime;
+				logElapsed(console, elapsed);
+			}
+			sc++;
+		}
 
 		// error = error / totalChars;
 		logError(console, error);
